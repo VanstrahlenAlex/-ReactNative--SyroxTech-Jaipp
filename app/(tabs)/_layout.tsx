@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { Text, Image, View } from "react-native";
 import "../globals.css";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -9,6 +9,7 @@ import jaippLogo from "../../assets/jaipp_logo.png";
 //const FansIcon = require('../../assets/jaipp-logo.png');
 
 export default function TabsLayout() {
+	const router = useRouter();
 	
 	return (
 		<Tabs
@@ -57,7 +58,7 @@ export default function TabsLayout() {
 								className={` ${focused ? 'text-gray-400' :'text-primary-pink' }`}
 								style={{ fontSize: 12 }}
 							>
-								Fans
+								
 							</Text>
 						</View>
 					),
@@ -70,6 +71,12 @@ export default function TabsLayout() {
 					// 		Fans
 					// 	</Text>
 					// ),
+				}}
+				listeners={{
+					tabPress:(e) => {
+						e.preventDefault();
+						router.push('/camera')
+					}
 				}}
 			/>
 

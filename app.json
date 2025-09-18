@@ -22,7 +22,8 @@
       "predictiveBackGestureEnabled": false,
 	   "permissions": [
         "CAMERA",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+		"READ_EXTERNAL_STORAGE"
       ]
     },
     "web": {
