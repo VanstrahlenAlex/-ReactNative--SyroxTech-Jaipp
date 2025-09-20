@@ -40,6 +40,7 @@
 	"Fecha",
 	"Fondo",
 	"Formulario",
+	"función",
 	"garantizar",
 	"genérico",
 	"grabado",
@@ -58,7 +59,9 @@
 	"Lógica",
 	"Métodos",
 	"minutos",
+	"montar",
 	"Nacimiento",
+	"nativewind",
 	"Nombre",
 	"nuevo",
 	"Número",
@@ -91,6 +94,7 @@
 	"unos",
 	"Usuario",
 	"Verifica",
-	"verificación"
+	"verificación",
+	"worklets"
 ]
 }
