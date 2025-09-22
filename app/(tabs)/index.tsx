@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { supabase } from "@/utils/supabase";
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 type Artist = {
 	id: string;
@@ -30,8 +31,8 @@ type EventItem = {
 	city: string;
 	country: string;
 	cover_url: string;
-	date: string; // ISO
-	followers: string; // “+2.5K seguidores”
+	date: string; 
+	followers: string; 
 };
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -246,7 +247,7 @@ export default function Index() {
 										</Text>
 									</View>
 									<View className="flex-row items-center gap-2">
-										<Ionicons name="logo-spotify" size={20} color="#1DB954" />
+										<AntDesign name="spotify" size={24} color="#1DB954" />
 										<Text className="text-white/80 text-xs">{song.plays}</Text>
 									</View>
 								</View>
@@ -269,7 +270,7 @@ export default function Index() {
 							/>
 						</View>
 
-						{/* Slider mini de eventos (estilo carrusel inferior) */}
+						
 						<View className="mt-4 px-3">
 							<ScrollView
 								horizontal

@@ -4,7 +4,7 @@
     "slug": "jaipp_mobile_app2",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/iconOf1.png",
     "scheme": "jaippmobileapp2",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

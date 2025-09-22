@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	View,
 	Text,
 	FlatList,
 	ActivityIndicator,
 	StyleSheet,
-	Image,
 	TouchableOpacity,
 	Dimensions,
 	RefreshControl,
@@ -18,11 +17,11 @@ import {
 	NativeSyntheticEvent,
 	NativeScrollEvent,
 } from "react-native";
-import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { VideoView, useVideoPlayer } from "expo-video";
+import { Video, ResizeMode } from "expo-av";
 import { supabase } from "@/utils/supabase";
-
+import { useIsFocused } from "@react-navigation/native";
 
 type VideoRow = {
 	id: string;
@@ -42,6 +41,8 @@ type UserRow = {
 const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get("window");
 
 export default function Feed() {
+	const isFocused = useIsFocused();
+
 	const [videos, setVideos] = useState<VideoRow[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -52,8 +53,7 @@ export default function Feed() {
 	const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 	const [authors, setAuthors] = useState<Record<string, UserRow>>({});
 
-	// visibilidad
-	const [activeIndex, setActiveIndex] = useState(0);
+	const [activeIndex, setActiveIndex] = useState<number>(0);
 
 	// Comentarios
 	const [commentForVideo, setCommentForVideo] = useState<VideoRow | null>(null);
@@ -61,6 +61,11 @@ export default function Feed() {
 	const [comments, setComments] = useState<
 		{ id: string; text: string; user_id: string; created_at: string }[]
 	>([]);
+
+
+	useEffect(() => {
+		if (!isFocused) setActiveIndex(-1);
+	}, [isFocused]);
 
 	useEffect(() => {
 		(async () => {
@@ -76,14 +81,11 @@ export default function Feed() {
 		setRefreshing(false);
 	}, []);
 
-	const handleScrollEnd = useCallback(
-		(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-			const y = e.nativeEvent.contentOffset.y;
-			const idx = Math.max(0, Math.round(y / SCREEN_H));
-			setActiveIndex(idx);
-		},
-		[]
-	);
+	const handleScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+		const y = e.nativeEvent.contentOffset.y;
+		const idx = Math.max(0, Math.round(y / SCREEN_H));
+		setActiveIndex(idx);
+	}, []);
 
 	const loadFeed = async () => {
 		try {
@@ -97,9 +99,8 @@ export default function Feed() {
 
 			const list: VideoRow[] = rows ?? [];
 
-			const { data: signed, error: signErr } = await supabase
-				.storage
-				.from("videos") 
+			const { data: signed, error: signErr } = await supabase.storage
+				.from("videos")
 				.createSignedUrls(list.map((v) => v.uri), 60 * 60 * 24 * 7);
 			if (signErr) throw signErr;
 
@@ -123,7 +124,7 @@ export default function Feed() {
 			}
 
 			await hydrateLikes(withUrls);
-			setActiveIndex(0); 
+			setActiveIndex(isFocused ? 0 : -1);
 		} catch (e: any) {
 			setError(e.message ?? "Error cargando feed");
 		} finally {
@@ -206,7 +207,7 @@ export default function Feed() {
 				message: video.signedUrl,
 				url: video.signedUrl,
 			});
-		} catch (e) {
+		} catch {
 			Alert.alert("Error", "No se pudo compartir.");
 		}
 	};
@@ -287,7 +288,7 @@ export default function Feed() {
 				renderItem={({ item, index }) => (
 					<Post
 						item={item}
-						isActive={index === activeIndex} // 👈 sólo este reproduce
+						isActive={isFocused && index === activeIndex}
 						liked={!!likedByMe[item.id]}
 						likes={likeCounts[item.id] ?? 0}
 						author={authors[item.user_id]}
@@ -296,9 +297,7 @@ export default function Feed() {
 						onComment={() => openComments(item)}
 					/>
 				)}
-				refreshControl={
-					<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-				}
+				refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
 				pagingEnabled
 				snapToInterval={SCREEN_H}
 				decelerationRate="fast"
@@ -310,7 +309,7 @@ export default function Feed() {
 				style={{ backgroundColor: "black" }}
 			/>
 
-			{/* Modal de comentarios */}
+			{/* Modal comentarios */}
 			<Modal
 				visible={!!commentForVideo}
 				transparent
@@ -344,9 +343,7 @@ export default function Feed() {
 									</View>
 								</View>
 							)}
-							ListEmptyComponent={
-								<Text style={{ color: "#bbb" }}>Sé el primero en comentar</Text>
-							}
+							ListEmptyComponent={<Text style={{ color: "#bbb" }}>Sé el primero en comentar</Text>}
 						/>
 
 						<View style={styles.composer}>
@@ -387,40 +384,35 @@ function Post({
 	onShare: () => void;
 	isActive: boolean;
 }) {
-
-	const player = useVideoPlayer({ uri: item.signedUrl ?? "" });
-
-	useEffect(() => {
-		player.loop = true;
-		if (item.signedUrl && isActive) {
-			player.play();
-		} else {
-			player.pause();
-		}
-	}, [isActive, item.signedUrl, player]);
+	const videoRef = useRef<Video | null>(null);
 
 	return (
 		<View style={styles.post}>
 			{item.signedUrl ? (
-				<VideoView style={styles.video} player={player} resizeMode="cover" />
+				<Video
+					ref={videoRef}
+					source={{ uri: item.signedUrl }}
+					style={styles.video}
+					resizeMode={ResizeMode.COVER}
+					isLooping
+					shouldPlay={!!isActive}
+				/>
 			) : (
 				<View style={styles.videoFallback}>
 					<Text style={{ color: "#fff" }}>Video no disponible</Text>
 				</View>
 			)}
 
-			{/* Header: perfil del autor */}
+			{/* Header: autor */}
 			<View style={styles.header}>
 				<View style={styles.avatar} />
 				<View style={{ marginLeft: 8 }}>
 					<Text style={styles.username}>@{author?.username ?? "usuario"}</Text>
-					<Text style={styles.date}>
-						{new Date(item.created_at).toLocaleDateString()}
-					</Text>
+					<Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
 				</View>
 			</View>
 
-			{/* Acciones verticales (derecha) */}
+			{/* Acciones (derecha) */}
 			<View style={styles.actions}>
 				<TouchableOpacity onPress={onLike} style={styles.actionBtn} hitSlop={8}>
 					<Ionicons
@@ -431,11 +423,7 @@ function Post({
 					<Text style={styles.actionTxt}>{likes}</Text>
 				</TouchableOpacity>
 
-				<TouchableOpacity
-					onPress={onComment}
-					style={styles.actionBtn}
-					hitSlop={8}
-				>
+				<TouchableOpacity onPress={onComment} style={styles.actionBtn} hitSlop={8}>
 					<Ionicons name="chatbubble-outline" size={26} color="#fff" />
 					<Text style={styles.actionTxt}>Comentar</Text>
 				</TouchableOpacity>
@@ -450,12 +438,22 @@ function Post({
 }
 
 const styles = StyleSheet.create({
-	loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "black" },
+	loading: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "black",
+	},
 
 	post: { height: SCREEN_H, width: SCREEN_W, backgroundColor: "black" },
 
 	video: { position: "absolute", inset: 0 },
-	videoFallback: { position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" },
+	videoFallback: {
+		position: "absolute",
+		inset: 0,
+		alignItems: "center",
+		justifyContent: "center",
+	},
 
 	header: {
 		position: "absolute",
@@ -469,14 +467,14 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 	},
-	avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#333",  },
+	avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#333" },
 	username: { color: "#fff", fontWeight: "700" },
 	date: { color: "#bbb", fontSize: 12 },
 
 	actions: {
 		position: "absolute",
 		right: 10,
-		bottom: 134, 
+		bottom: 134,
 		alignItems: "center",
 		gap: 16,
 	},
@@ -536,4 +534,3 @@ const styles = StyleSheet.create({
 		backgroundColor: "#FB0086",
 	},
 });
-
